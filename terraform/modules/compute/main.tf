@@ -16,5 +16,13 @@ resource "aws_instance" "app" {
   iam_instance_profile   = var.instance_profile
   key_name               = var.key_name
 
+  # IMDSv2 obrigatório. hop_limit=2 permite que os containers Docker acedam
+  # às credenciais do Instance Profile (o bridge do Docker conta como 1 salto).
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
   tags = { Name = "${var.project_name}-app-ec2" }
 }
