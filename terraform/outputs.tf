@@ -19,6 +19,11 @@ output "rds_database_url" {
   sensitive   = true
 }
 
+output "web_sg_id" {
+  description = "ID do Security Group da EC2 (usado pelo CI para abrir/fechar SSH temporariamente)"
+  value       = module.networking.web_sg_id
+}
+
 output "queue_url" {
   description = "URL da fila SQS principal"
   value       = module.queue.queue_url

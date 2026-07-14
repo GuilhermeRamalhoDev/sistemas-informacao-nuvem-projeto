@@ -47,6 +47,10 @@ em logs ou no código.
 - **HTTP (porta 8000):** aberto para acesso público à API.
 - **SSH (porta 22):** restrito ao CIDR definido em `ssh_ingress_cidr` (o IP do
   administrador), **não** a `0.0.0.0/0`.
+- **SSH para o CI/CD:** o pipeline não deixa o SSH aberto ao mundo. Em vez disso,
+  o workflow de deploy **autoriza temporariamente apenas o IP do runner** antes de
+  correr o Ansible e **revoga essa regra no fim** (passo com `if: always()`),
+  minimizando a superfície de exposição.
 
 ### Security Group do RDS (`db-sg`)
 

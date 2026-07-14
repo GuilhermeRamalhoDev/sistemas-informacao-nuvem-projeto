@@ -6,7 +6,7 @@ variable "aws_region" {
 variable "state_bucket_name" {
   description = "Nome do bucket S3 para o remote state (deve ser globalmente único)"
   type        = string
-  default     = "sinuvem-eventos-tfstate"
+  default     = "sinuvem-eventos-tfstate-994655851630"
 }
 
 variable "lock_table_name" {
