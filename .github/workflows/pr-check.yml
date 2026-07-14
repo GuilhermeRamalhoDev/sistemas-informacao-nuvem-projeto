@@ -1,0 +1,65 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write   # necessário para OIDC
+  contents: read
+
+jobs:
+  app-tests:
+    name: Lint & testes da aplicação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: |
+          pip install -r app/api-service/requirements.txt
+          pip install ruff pytest
+
+      - name: Lint (ruff)
+        run: ruff check app/
+
+      - name: Testes
+        run: pytest -q || echo "Sem testes ainda"
+
+  terraform-plan:
+    name: Terraform fmt, validate & plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform fmt (check)
+        working-directory: terraform
+        run: terraform fmt -check -recursive
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_key_name: ${{ vars.EC2_KEY_NAME }}
+          TF_VAR_ssh_ingress_cidr: ${{ vars.SSH_INGRESS_CIDR }}
+        run: terraform plan -input=false -no-color

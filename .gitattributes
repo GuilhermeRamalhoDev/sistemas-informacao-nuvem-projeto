@@ -1,0 +1,8 @@
+# Normaliza line endings. Scripts shell e YAML têm de usar LF (senão quebram
+# em Linux/containers), mesmo em Windows.
+* text=auto eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.py text eol=lf
+*.tf text eol=lf

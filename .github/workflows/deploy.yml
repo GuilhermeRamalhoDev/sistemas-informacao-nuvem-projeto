@@ -1,0 +1,110 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write   # OIDC para a AWS
+  contents: read
+  packages: write   # publicar imagens no GHCR
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---- Imagens Docker (tag imutável = commit SHA) ----
+      - name: Definir base das imagens (lowercase)
+        run: echo "IMAGE_BASE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push API Service
+        run: |
+          docker build -t $IMAGE_BASE/api-service:${{ github.sha }} \
+                       -t $IMAGE_BASE/api-service:latest app/api-service
+          docker push $IMAGE_BASE/api-service:${{ github.sha }}
+          docker push $IMAGE_BASE/api-service:latest
+
+      - name: Build & push Worker Service
+        run: |
+          docker build -t $IMAGE_BASE/worker-service:${{ github.sha }} \
+                       -t $IMAGE_BASE/worker-service:latest app/worker-service
+          docker push $IMAGE_BASE/worker-service:${{ github.sha }}
+          docker push $IMAGE_BASE/worker-service:latest
+
+      # ---- Infraestrutura (Terraform via OIDC) ----
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      - name: Terraform Apply
+        working-directory: terraform
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_key_name: ${{ vars.EC2_KEY_NAME }}
+          TF_VAR_ssh_ingress_cidr: ${{ vars.SSH_INGRESS_CIDR }}
+        run: terraform apply -auto-approve -input=false
+
+      - name: Capturar outputs do Terraform
+        id: tf
+        working-directory: terraform
+        run: |
+          echo "ec2_ip=$(terraform output -raw ec2_public_ip)" >> "$GITHUB_OUTPUT"
+          echo "queue_url=$(terraform output -raw queue_url)" >> "$GITHUB_OUTPUT"
+          # database_url é sensível: passa por env, não por output de step.
+          echo "DATABASE_URL=$(terraform output -raw rds_database_url)" >> "$GITHUB_ENV"
+
+      # ---- Configuração da EC2 (Ansible) ----
+      - name: Instalar Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      - name: Configurar chave SSH
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > cloud-key.pem
+          chmod 600 cloud-key.pem
+
+      - name: Gerar inventário Ansible
+        run: |
+          echo "[web]" > ansible/inventory.ini
+          echo "${{ steps.tf.outputs.ec2_ip }} ansible_user=ec2-user ansible_ssh_private_key_file=../cloud-key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ansible/inventory.ini
+
+      - name: Aguardar SSH da EC2
+        run: |
+          for i in $(seq 1 30); do
+            if nc -z -w5 ${{ steps.tf.outputs.ec2_ip }} 22; then echo "SSH pronto"; break; fi
+            echo "À espera do SSH..."; sleep 10
+          done
+
+      - name: Correr playbook Ansible
+        working-directory: ansible
+        run: |
+          ansible-playbook -i inventory.ini playbook.yml \
+            -e "image_base=$IMAGE_BASE" \
+            -e "image_tag=${{ github.sha }}" \
+            -e "database_url=$DATABASE_URL" \
+            -e "sqs_queue_url=${{ steps.tf.outputs.queue_url }}" \
+            -e "aws_region=us-east-1" \
+            -e "app_port=8000" \
+            -e "ghcr_user=${{ github.actor }}" \
+            -e "ghcr_token=${{ secrets.GITHUB_TOKEN }}"

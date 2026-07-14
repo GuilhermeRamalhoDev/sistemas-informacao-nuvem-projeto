@@ -1,0 +1,4 @@
+# Gerado automaticamente pelo workflow a partir do output ec2_public_ip do Terraform.
+# Este exemplo serve apenas de referência.
+[web]
+<EC2_PUBLIC_IP> ansible_user=ec2-user ansible_ssh_private_key_file=../cloud-key.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'

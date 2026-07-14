@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.ruff_cache/
+.pytest_cache/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# Credenciais / chaves (NUNCA commitar)
+*.pem
+*.key
+credentials
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

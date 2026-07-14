@@ -1,0 +1,61 @@
+---
+# Configura a EC2 e arranca os containers da aplicação.
+# Variáveis injetadas pelo workflow via --extra-vars:
+#   image_base, image_tag, database_url, sqs_queue_url, aws_region,
+#   app_port, ghcr_user, ghcr_token
+- name: Deploy da aplicação na EC2
+  hosts: web
+  become: true
+
+  tasks:
+    - name: Instalar Docker
+      ansible.builtin.dnf:
+        name: docker
+        state: present
+
+    - name: Arrancar e ativar o Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Login no GitHub Container Registry
+      ansible.builtin.command:
+        cmd: "docker login ghcr.io -u {{ ghcr_user }} --password-stdin"
+        stdin: "{{ ghcr_token }}"
+      no_log: true
+
+    - name: Pull da imagem do API Service
+      ansible.builtin.command:
+        cmd: "docker pull {{ image_base }}/api-service:{{ image_tag }}"
+
+    - name: Pull da imagem do Worker Service
+      ansible.builtin.command:
+        cmd: "docker pull {{ image_base }}/worker-service:{{ image_tag }}"
+
+    - name: Remover containers antigos (se existirem)
+      ansible.builtin.command:
+        cmd: "docker rm -f {{ item }}"
+      loop:
+        - api-service
+        - worker-service
+      failed_when: false
+
+    - name: Arrancar o API Service
+      ansible.builtin.command:
+        cmd: >-
+          docker run -d --name api-service --restart unless-stopped
+          -p {{ app_port }}:8000
+          -e DATABASE_URL={{ database_url }}
+          -e SQS_QUEUE_URL={{ sqs_queue_url }}
+          -e AWS_REGION={{ aws_region }}
+          {{ image_base }}/api-service:{{ image_tag }}
+
+    - name: Arrancar o Worker Service
+      ansible.builtin.command:
+        cmd: >-
+          docker run -d --name worker-service --restart unless-stopped
+          -e DATABASE_URL={{ database_url }}
+          -e SQS_QUEUE_URL={{ sqs_queue_url }}
+          -e AWS_REGION={{ aws_region }}
+          {{ image_base }}/worker-service:{{ image_tag }}

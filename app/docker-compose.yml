@@ -1,0 +1,63 @@
+# Ambiente de desenvolvimento LOCAL.
+# Replica a arquitetura de produção sem custos AWS:
+#   - Postgres   no lugar do Amazon RDS
+#   - LocalStack no lugar do Amazon SQS
+# O código da aplicação é EXATAMENTE o mesmo; muda só a configuração (env vars).
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: eventsdb
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d eventsdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:3
+    environment:
+      SERVICES: sqs
+      DEBUG: "0"
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh
+
+  api-service:
+    build: ./api-service
+    depends_on:
+      db:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg2://app:app@db:5432/eventsdb
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://localstack:4566
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/event-queue
+      # Credenciais dummy: o LocalStack aceita qualquer valor.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    ports:
+      - "8000:8000"
+
+  worker-service:
+    build: ./worker-service
+    depends_on:
+      db:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg2://app:app@db:5432/eventsdb
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://localstack:4566
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/event-queue
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
