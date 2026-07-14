@@ -3,6 +3,13 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Não faz deploy quando só mudam documentação/config não-operacional.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - ".gitattributes"
+  workflow_dispatch: {}   # permite disparar o deploy manualmente na aba Actions
 
 permissions:
   id-token: write   # OIDC para a AWS
