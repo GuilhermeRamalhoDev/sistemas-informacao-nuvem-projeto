@@ -17,6 +17,8 @@ A solução é composta por dois serviços que comunicam de forma assíncrona:
   (validação de capacidade do evento) e atualiza o estado da inscrição na base
   de dados para `CONFIRMED` ou `REJECTED`.
 
+![Arquitetura da solução](imagens/arquitetura.svg)
+
 ```
 Cliente ──HTTP──► API Service ──┬──► RDS PostgreSQL (INSERT status=PENDING)
                                 └──► SQS (mensagem: {registration_id})

@@ -8,14 +8,7 @@ assíncrona via SQS e um pipeline CI/CD em GitHub Actions.
 
 ## Arquitetura (resumo)
 
-```
-            HTTP                      SQS                      
- Cliente ──────────►  API Service ──────────►  Worker Service
-                         │   (FastAPI)             │
-                         ▼                         ▼
-                    Amazon RDS  ◄──────────────────┘
-                    (PostgreSQL)     atualiza estado
-```
+![Arquitetura](docs/imagens/arquitetura.svg)
 
 O **API Service** recebe pedidos, grava a inscrição na base de dados (estado
 `PENDING`) e publica uma mensagem na fila SQS. O **Worker Service** consome a
@@ -59,4 +52,4 @@ FastAPI / Python · Ansible · GitHub Actions (OIDC) · PostgreSQL
 
 ## Autores
 
-- *(o teu nome)*
+- Guilherme Ramalho
