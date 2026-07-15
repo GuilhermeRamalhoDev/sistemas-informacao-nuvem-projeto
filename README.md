@@ -48,6 +48,7 @@ FastAPI / Python · Ansible · GitHub Actions (OIDC) · PostgreSQL
 | [setup.md](docs/setup.md) | Pré-requisitos e bootstrap do backend/OIDC |
 | [deployment.md](docs/deployment.md) | Deploy passo a passo e pipeline CI/CD |
 | [security.md](docs/security.md) | IAM, secrets e segurança de rede |
+| [dr.md](docs/dr.md) | Disaster Recovery: standby multi-região e failover automático |
 | [limitations.md](docs/limitations.md) | Limitações e melhorias futuras |
 
 ## Autores

@@ -91,11 +91,19 @@ snapshot para a região standby. Em produção (conta paga), ativar-se-ia
 2. Quando o health check do primário voltar a *Healthy*, o Route 53 volta a
    responder com o IP do primário automaticamente.
 
-## Números medidos (preencher após o drill)
+## Números medidos
+
+Drill executado com sucesso (paragem da EC2 primária, medição via
+`route53 test-dns-answer`):
 
 | Cenário | RTO medido | RPO |
 |---------|-----------|-----|
-| Falha do primário → standby | _(preencher)_ | ≤ intervalo de snapshot |
+| Falha do primário → standby | **~38 s** | ≤ intervalo de snapshot |
+
+Observação do drill: o Route 53 respondeu com o IP do primário
+(`34.229.4.87`) até ~t+31s e passou a responder com o IP do standby
+(`54.245.237.71`) a ~t+38s — coerente com `request_interval=10s` e
+`failure_threshold=2` (≈2-3 falhas consecutivas + propagação).
 
 ## Nota sobre custos
 
