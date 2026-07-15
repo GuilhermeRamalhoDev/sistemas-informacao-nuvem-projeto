@@ -27,3 +27,11 @@ resource "aws_instance" "app" {
 
   tags = { Name = "${var.project_name}-app-ec2" }
 }
+
+# Elastic IP: IP público estável (não muda em stop/start), necessário para os
+# health checks do Route 53 e para o failover drill.
+resource "aws_eip" "app" {
+  instance = aws_instance.app.id
+  domain   = "vpc"
+  tags     = { Name = "${var.project_name}-eip" }
+}

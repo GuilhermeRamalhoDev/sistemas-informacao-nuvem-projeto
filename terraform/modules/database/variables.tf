@@ -31,7 +31,7 @@ variable "multi_az" {
 }
 
 variable "backup_retention_period" {
-  description = "Dias de retenção de backups automáticos (necessário >0 para read replicas)"
+  description = "Dias de retenção de backups automáticos (1 = compatível com Free Tier)"
   type        = number
-  default     = 7
+  default     = 1
 }

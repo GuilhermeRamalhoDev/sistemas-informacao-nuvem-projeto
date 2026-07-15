@@ -1,11 +1,17 @@
-# --- Ponto de entrada único (failover automático) ---
-output "accelerator_ip" {
-  description = "IP estático do Global Accelerator — usar este para aceder à app"
-  value       = module.accelerator.static_ip
+# --- Failover automático (Route 53) ---
+output "dns_zone_id" {
+  description = "ID da hosted zone de failover (usado pelo drill)"
+  value       = module.dns.zone_id
 }
 
-output "accelerator_dns" {
-  value = module.accelerator.dns_name
+output "dns_record_fqdn" {
+  description = "FQDN da app com failover (consultar via nameservers da zona)"
+  value       = module.dns.record_fqdn
+}
+
+output "dns_name_servers" {
+  description = "Nameservers da zona (demo: dig @<ns> <fqdn>)"
+  value       = module.dns.name_servers
 }
 
 # --- Primário (us-east-1) — configurado pelo Ansible ---

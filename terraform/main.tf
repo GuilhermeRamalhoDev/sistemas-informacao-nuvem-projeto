@@ -21,7 +21,9 @@ provider "aws" {
 }
 
 # ---------------------------------------------------------------------------
-# PRIMÁRIO — configurado pelo Ansible (pipeline). RDS Multi-AZ.
+# PRIMÁRIO — configurado pelo Ansible (pipeline).
+# NOTA: multi_az=false porque a conta é Free Tier (Multi-AZ não incluído).
+# A resiliência de dados é garantida por snapshots automáticos (ver docs/dr.md).
 # ---------------------------------------------------------------------------
 module "primary" {
   source           = "./modules/stack"
@@ -32,7 +34,7 @@ module "primary" {
   key_name         = var.key_name
   db_username      = var.db_username
   db_password      = var.db_password
-  multi_az         = true
+  multi_az         = false
 }
 
 # ---------------------------------------------------------------------------
@@ -55,15 +57,12 @@ module "standby" {
 }
 
 # ---------------------------------------------------------------------------
-# Global Accelerator — failover automático primário <-> standby (sem domínio).
+# Route 53 — failover automático primário -> standby por health checks.
+# (Alternativa ao Global Accelerator, que não está disponível no Free Tier.)
 # ---------------------------------------------------------------------------
-module "accelerator" {
-  source              = "./modules/accelerator"
-  providers           = { aws = aws.standby }
-  name                = "${var.project_name}-ga"
-  app_port            = var.app_port
-  primary_region      = var.aws_region
-  primary_instance_id = module.primary.ec2_instance_id
-  standby_region      = var.standby_region
-  standby_instance_id = module.standby.ec2_instance_id
+module "dns" {
+  source     = "./modules/dns"
+  app_port   = var.app_port
+  primary_ip = module.primary.ec2_public_ip
+  standby_ip = module.standby.ec2_public_ip
 }

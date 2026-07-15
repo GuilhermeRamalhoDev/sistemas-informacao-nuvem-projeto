@@ -101,7 +101,7 @@ resource "aws_iam_role_policy_attachment" "gha" {
     "arn:aws:iam::aws:policy/AmazonS3FullAccess",
     "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess",
     "arn:aws:iam::aws:policy/AmazonSSMFullAccess",
-    "arn:aws:iam::aws:policy/GlobalAcceleratorFullAccess",
+    "arn:aws:iam::aws:policy/AmazonRoute53FullAccess",
   ])
   role       = aws_iam_role.github_actions.name
   policy_arn = each.value

@@ -38,26 +38,33 @@ jobs:
         id: tf
         working-directory: terraform
         run: |
-          echo "ga_ip=$(terraform output -raw accelerator_ip)" >> "$GITHUB_OUTPUT"
+          echo "zone_id=$(terraform output -raw dns_zone_id)" >> "$GITHUB_OUTPUT"
+          echo "fqdn=$(terraform output -raw dns_record_fqdn)" >> "$GITHUB_OUTPUT"
           echo "primary_id=$(terraform output -raw primary_instance_id)" >> "$GITHUB_OUTPUT"
+          echo "standby_ip=$(terraform output -raw standby_ec2_public_ip)" >> "$GITHUB_OUTPUT"
 
       - name: Executar drill e medir RTO
         run: |
-          GA_IP="${{ steps.tf.outputs.ga_ip }}"
+          ZONE="${{ steps.tf.outputs.zone_id }}"
+          FQDN="${{ steps.tf.outputs.fqdn }}"
           PRIMARY_ID="${{ steps.tf.outputs.primary_id }}"
+          STANDBY_IP="${{ steps.tf.outputs.standby_ip }}"
 
-          echo "Estado inicial:"; curl -s "http://$GA_IP:8000/health" || true; echo
+          echo "Resposta DNS inicial:"
+          aws route53 test-dns-answer --hosted-zone-id "$ZONE" \
+            --record-name "$FQDN" --record-type A --query 'RecordData' --output text || true
 
           echo "== A simular falha do primário (stop da EC2 $PRIMARY_ID) =="
           START=$(date +%s)
           aws ec2 stop-instances --instance-ids "$PRIMARY_ID" >/dev/null
 
-          echo "== A aguardar failover para o standby (us-west-2) =="
+          echo "== A aguardar o Route 53 encaminhar para o standby ($STANDBY_IP) =="
           RTO="(não detetado)"
           for i in $(seq 1 60); do
-            REGION=$(curl -s --max-time 5 "http://$GA_IP:8000/health" | grep -o '"region":"[^"]*"' || true)
-            echo "  t+$((i*5))s -> $REGION"
-            if echo "$REGION" | grep -q "us-west-2"; then
+            ANS=$(aws route53 test-dns-answer --hosted-zone-id "$ZONE" \
+              --record-name "$FQDN" --record-type A --query 'RecordData' --output text || true)
+            echo "  t+$((i*5))s -> $ANS"
+            if echo "$ANS" | grep -q "$STANDBY_IP"; then
               END=$(date +%s); RTO="$((END-START))s"; break
             fi
             sleep 5
@@ -65,7 +72,7 @@ jobs:
 
           echo "## Resultado do Failover Drill" >> "$GITHUB_STEP_SUMMARY"
           echo "- **RTO medido:** $RTO" >> "$GITHUB_STEP_SUMMARY"
-          echo "- O tráfego passou do primário (us-east-1) para o standby (us-west-2) sem intervenção manual." >> "$GITHUB_STEP_SUMMARY"
+          echo "- O Route 53 passou a responder com o IP do standby sem intervenção manual." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Failback (recuperar primário)
         if: ${{ inputs.failback }}
