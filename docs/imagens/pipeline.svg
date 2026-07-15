@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 560" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1040" height="560" fill="#ffffff"/>
+  <text x="520" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">Pipeline CI/CD — GitHub Actions</text>
+
+  <!-- ================= WORKFLOW 1: PR ================= -->
+  <text x="30" y="74" font-size="14" font-weight="700" fill="#1d4ed8">Workflow 1 · Pull Request  (pr-check.yml) — validação antes do merge</text>
+
+  <rect x="25" y="90" width="140" height="90" rx="8" fill="#e2e8f0" stroke="#475569" stroke-width="1.4"/>
+  <text x="95" y="128" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0f172a">Abrir / atualizar</text>
+  <text x="95" y="146" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0f172a">Pull Request</text>
+
+  <rect x="210" y="90" width="250" height="42" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.3"/>
+  <text x="335" y="116" text-anchor="middle" font-size="12" font-weight="600" fill="#1d4ed8">app-tests · ruff + pytest</text>
+
+  <rect x="210" y="138" width="250" height="42" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.3"/>
+  <text x="335" y="164" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6">terraform · fmt + validate + plan</text>
+
+  <rect x="510" y="90" width="180" height="90" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="600" y="128" text-anchor="middle" font-size="12.5" font-weight="700" fill="#166534">Gate de revisão</text>
+  <text x="600" y="147" text-anchor="middle" font-size="11" fill="#166534">merge só se verde</text>
+
+  <line x1="165" y1="135" x2="208" y2="120" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="165" y1="135" x2="208" y2="150" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="460" y1="135" x2="508" y2="135" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+
+  <line x1="30" y1="210" x2="1010" y2="210" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ================= WORKFLOW 2: DEPLOY ================= -->
+  <text x="30" y="248" font-size="14" font-weight="700" fill="#c2410c">Workflow 2 · push para main  (deploy.yml) — build + infra + deploy</text>
+
+  <rect x="25" y="270" width="130" height="110" rx="8" fill="#e2e8f0" stroke="#475569" stroke-width="1.4"/>
+  <text x="90" y="312" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0f172a">git push</text>
+  <text x="90" y="330" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0f172a">→ main</text>
+  <text x="90" y="352" text-anchor="middle" font-size="10" fill="#475569">(ignora docs)</text>
+
+  <!-- Fase 1 -->
+  <rect x="180" y="270" width="195" height="110" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="277" y="294" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1d4ed8">1 · Imagens Docker</text>
+  <text x="277" y="322" text-anchor="middle" font-size="11" fill="#1e3a8a">Build + push GHCR</text>
+  <text x="277" y="340" text-anchor="middle" font-size="11" fill="#1e3a8a">api-service + worker</text>
+  <text x="277" y="360" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1d4ed8">tag = commit SHA</text>
+
+  <!-- Fase 2 -->
+  <rect x="400" y="270" width="210" height="110" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="505" y="294" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5b21b6">2 · Infraestrutura</text>
+  <text x="505" y="320" text-anchor="middle" font-size="11" fill="#5b21b6">OIDC → Terraform</text>
+  <text x="505" y="338" text-anchor="middle" font-size="11" fill="#5b21b6">init + apply</text>
+  <text x="505" y="358" text-anchor="middle" font-size="10.5" fill="#5b21b6">VPC · EC2 · RDS · SQS · IAM</text>
+
+  <!-- Fase 3 -->
+  <rect x="635" y="270" width="245" height="110" rx="8" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="757" y="294" text-anchor="middle" font-size="12.5" font-weight="700" fill="#c2410c">3 · Deploy da app</text>
+  <text x="757" y="320" text-anchor="middle" font-size="11" fill="#7c2d12">abre SSH (só o runner)</text>
+  <text x="757" y="338" text-anchor="middle" font-size="11" fill="#7c2d12">Ansible: pull + run containers</text>
+  <text x="757" y="358" text-anchor="middle" font-size="11" fill="#7c2d12">fecha SSH (if: always)</text>
+
+  <!-- Resultado -->
+  <rect x="905" y="285" width="110" height="80" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6"/>
+  <text x="960" y="318" text-anchor="middle" font-size="12" font-weight="700" fill="#166534">App online</text>
+  <text x="960" y="337" text-anchor="middle" font-size="10" fill="#166534">EC2 : 8000</text>
+
+  <line x1="155" y1="325" x2="178" y2="325" stroke="#334155" stroke-width="1.8" marker-end="url(#arr)"/>
+  <line x1="375" y1="325" x2="398" y2="325" stroke="#334155" stroke-width="1.8" marker-end="url(#arr)"/>
+  <line x1="610" y1="325" x2="633" y2="325" stroke="#334155" stroke-width="1.8" marker-end="url(#arr)"/>
+  <line x1="880" y1="325" x2="903" y2="325" stroke="#334155" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- Nota de seguranca -->
+  <text x="30" y="430" font-size="12" font-weight="700" fill="#0f172a">Segurança no pipeline:</text>
+  <text x="30" y="452" font-size="11.5" fill="#334155">• OIDC — a AWS dá credenciais temporárias; sem access keys guardadas no GitHub.</text>
+  <text x="30" y="472" font-size="11.5" fill="#334155">• Password do RDS e chave SSH em GitHub Secrets (nunca no código).</text>
+  <text x="30" y="492" font-size="11.5" fill="#334155">• SSH aberto só para o IP do runner durante o deploy e revogado no fim.</text>
+  <text x="30" y="512" font-size="11.5" fill="#334155">• Imagens com tag imutável (commit SHA) → deploy rastreável e com rollback.</text>
+</svg>

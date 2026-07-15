@@ -2,6 +2,10 @@
 
 Pré-requisitos e bootstrap concluídos? Ver [`setup.md`](setup.md).
 
+## Visão geral do pipeline
+
+![Pipeline CI/CD](imagens/pipeline.svg)
+
 ## Deploy automático (recomendado)
 
 O deploy é feito pelo pipeline CI/CD sempre que há `push` para `main`:
