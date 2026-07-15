@@ -42,6 +42,23 @@ resource "aws_iam_role_policy" "sqs_access" {
   policy = data.aws_iam_policy_document.sqs_access.json
 }
 
+# Permissão para ler a password da BD do SSM Parameter Store (SecureString).
+# Least privilege: apenas GetParameter, apenas neste parâmetro.
+data "aws_iam_policy_document" "ssm_access" {
+  statement {
+    sid       = "AllowReadDbSecret"
+    effect    = "Allow"
+    actions   = ["ssm:GetParameter"]
+    resources = [var.ssm_parameter_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ssm_access" {
+  name   = "${var.project_name}-ssm-access"
+  role   = aws_iam_role.ec2.id
+  policy = data.aws_iam_policy_document.ssm_access.json
+}
+
 resource "aws_iam_instance_profile" "ec2" {
   name = "${var.project_name}-ec2-profile"
   role = aws_iam_role.ec2.name

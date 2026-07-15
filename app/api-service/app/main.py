@@ -39,7 +39,13 @@ def on_startup() -> None:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": settings.service_name}
+    # region permite identificar qual ambiente (primário/standby) respondeu,
+    # essencial para observar o failover do Global Accelerator.
+    return {
+        "status": "ok",
+        "service": settings.service_name,
+        "region": settings.aws_region,
+    }
 
 
 @app.post("/events", response_model=EventOut, status_code=201)

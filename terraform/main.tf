@@ -1,65 +1,69 @@
-provider "aws" {
-  region = var.aws_region
-
-  # Tags aplicadas automaticamente a todos os recursos (consistência e rastreio de custos).
-  default_tags {
-    tags = {
-      Project     = var.project_name
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-    }
+locals {
+  default_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
+# Provider da região PRIMÁRIA (us-east-1).
+provider "aws" {
+  region = var.aws_region
+  default_tags { tags = local.default_tags }
+}
+
+# Provider da região STANDBY (us-west-2). Também usado para o Global Accelerator
+# (que só pode ser gerido em us-west-2).
+provider "aws" {
+  alias  = "standby"
+  region = var.standby_region
+  default_tags { tags = local.default_tags }
+}
+
 # ---------------------------------------------------------------------------
-# Rede: VPC, subnets públicas/privadas, IGW, route tables, security groups.
+# PRIMÁRIO — configurado pelo Ansible (pipeline). RDS Multi-AZ.
 # ---------------------------------------------------------------------------
-module "networking" {
-  source           = "./modules/networking"
-  project_name     = var.project_name
+module "primary" {
+  source           = "./modules/stack"
+  name_prefix      = "${var.project_name}-primary"
+  region           = var.aws_region
   ssh_ingress_cidr = var.ssh_ingress_cidr
   app_port         = var.app_port
-}
-
-# ---------------------------------------------------------------------------
-# Filas: SQS principal + Dead Letter Queue.
-# ---------------------------------------------------------------------------
-module "queue" {
-  source       = "./modules/queue"
-  project_name = var.project_name
-}
-
-# ---------------------------------------------------------------------------
-# IAM: role + instance profile para a EC2 com permissão SQS *scoped*
-# (apenas as filas deste projeto). Evita credenciais hardcoded no código.
-# ---------------------------------------------------------------------------
-module "iam" {
-  source       = "./modules/iam"
-  project_name = var.project_name
-  queue_arn    = module.queue.queue_arn
-  dlq_arn      = module.queue.dlq_arn
-}
-
-# ---------------------------------------------------------------------------
-# Base de dados: RDS PostgreSQL em subnets privadas.
-# ---------------------------------------------------------------------------
-module "database" {
-  source             = "./modules/database"
-  project_name       = var.project_name
-  private_subnet_ids = module.networking.private_subnet_ids
-  db_sg_id           = module.networking.db_sg_id
-  db_username        = var.db_username
-  db_password        = var.db_password
-}
-
-# ---------------------------------------------------------------------------
-# Compute: instância EC2 que corre os containers (API + Worker).
-# ---------------------------------------------------------------------------
-module "compute" {
-  source           = "./modules/compute"
-  project_name     = var.project_name
-  public_subnet_id = module.networking.public_subnet_ids[0]
-  web_sg_id        = module.networking.web_sg_id
-  instance_profile = module.iam.instance_profile_name
   key_name         = var.key_name
+  db_username      = var.db_username
+  db_password      = var.db_password
+  multi_az         = true
+}
+
+# ---------------------------------------------------------------------------
+# STANDBY — auto-provisionado por user_data (sem SSH). RDS single-AZ.
+# É uma instância parametrizada da MESMA stack, noutra região.
+# ---------------------------------------------------------------------------
+module "standby" {
+  source                = "./modules/stack"
+  providers             = { aws = aws.standby }
+  name_prefix           = "${var.project_name}-standby"
+  region                = var.standby_region
+  ssh_ingress_cidr      = var.ssh_ingress_cidr
+  app_port              = var.app_port
+  db_username           = var.db_username
+  db_password           = var.db_password
+  multi_az              = false
+  enable_self_provision = true
+  image_base            = var.image_base
+  image_tag             = var.image_tag
+}
+
+# ---------------------------------------------------------------------------
+# Global Accelerator — failover automático primário <-> standby (sem domínio).
+# ---------------------------------------------------------------------------
+module "accelerator" {
+  source              = "./modules/accelerator"
+  providers           = { aws = aws.standby }
+  name                = "${var.project_name}-ga"
+  app_port            = var.app_port
+  primary_region      = var.aws_region
+  primary_instance_id = module.primary.ec2_instance_id
+  standby_region      = var.standby_region
+  standby_instance_id = module.standby.ec2_instance_id
 }

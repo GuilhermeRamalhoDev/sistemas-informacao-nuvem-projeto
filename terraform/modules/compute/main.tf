@@ -15,6 +15,7 @@ resource "aws_instance" "app" {
   vpc_security_group_ids = [var.web_sg_id]
   iam_instance_profile   = var.instance_profile
   key_name               = var.key_name
+  user_data              = var.user_data
 
   # IMDSv2 obrigatório. hop_limit=2 permite que os containers Docker acedam
   # às credenciais do Instance Profile (o bridge do Docker conta como 1 salto).

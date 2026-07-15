@@ -69,6 +69,9 @@ jobs:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
           TF_VAR_key_name: ${{ vars.EC2_KEY_NAME }}
           TF_VAR_ssh_ingress_cidr: ${{ vars.SSH_INGRESS_CIDR }}
+          # Passadas ao standby (user_data) para puxar as imagens certas.
+          TF_VAR_image_base: ${{ env.IMAGE_BASE }}
+          TF_VAR_image_tag: ${{ github.sha }}
         run: terraform apply -auto-approve -input=false
 
       - name: Capturar outputs do Terraform

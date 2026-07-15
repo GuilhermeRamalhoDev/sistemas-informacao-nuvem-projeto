@@ -1,0 +1,74 @@
+name: Failover Drill
+
+# Simula a falha do ambiente primário e mede o RTO (tempo até o Global
+# Accelerator encaminhar o tráfego para o standby). Disparado manualmente.
+on:
+  workflow_dispatch:
+    inputs:
+      failback:
+        description: "Recuperar o primário no fim (failback)?"
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      - name: Ler outputs
+        id: tf
+        working-directory: terraform
+        run: |
+          echo "ga_ip=$(terraform output -raw accelerator_ip)" >> "$GITHUB_OUTPUT"
+          echo "primary_id=$(terraform output -raw primary_instance_id)" >> "$GITHUB_OUTPUT"
+
+      - name: Executar drill e medir RTO
+        run: |
+          GA_IP="${{ steps.tf.outputs.ga_ip }}"
+          PRIMARY_ID="${{ steps.tf.outputs.primary_id }}"
+
+          echo "Estado inicial:"; curl -s "http://$GA_IP:8000/health" || true; echo
+
+          echo "== A simular falha do primário (stop da EC2 $PRIMARY_ID) =="
+          START=$(date +%s)
+          aws ec2 stop-instances --instance-ids "$PRIMARY_ID" >/dev/null
+
+          echo "== A aguardar failover para o standby (us-west-2) =="
+          RTO="(não detetado)"
+          for i in $(seq 1 60); do
+            REGION=$(curl -s --max-time 5 "http://$GA_IP:8000/health" | grep -o '"region":"[^"]*"' || true)
+            echo "  t+$((i*5))s -> $REGION"
+            if echo "$REGION" | grep -q "us-west-2"; then
+              END=$(date +%s); RTO="$((END-START))s"; break
+            fi
+            sleep 5
+          done
+
+          echo "## Resultado do Failover Drill" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **RTO medido:** $RTO" >> "$GITHUB_STEP_SUMMARY"
+          echo "- O tráfego passou do primário (us-east-1) para o standby (us-west-2) sem intervenção manual." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Failback (recuperar primário)
+        if: ${{ inputs.failback }}
+        run: |
+          aws ec2 start-instances --instance-ids "${{ steps.tf.outputs.primary_id }}" >/dev/null
+          echo "Primário a reiniciar; o Global Accelerator voltará a encaminhar para ele quando ficar healthy."

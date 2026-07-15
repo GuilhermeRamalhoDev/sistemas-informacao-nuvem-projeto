@@ -16,8 +16,15 @@ variable "instance_profile" {
 }
 
 variable "key_name" {
-  description = "Nome do EC2 Key Pair existente"
+  description = "Nome do EC2 Key Pair existente (null se não houver acesso SSH, ex: standby)"
   type        = string
+  default     = null
+}
+
+variable "user_data" {
+  description = "Script de arranque (cloud-init). Usado no standby para auto-configuração sem SSH."
+  type        = string
+  default     = null
 }
 
 variable "instance_type" {

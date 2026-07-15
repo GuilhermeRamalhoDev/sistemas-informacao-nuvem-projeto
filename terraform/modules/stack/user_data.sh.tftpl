@@ -1,0 +1,26 @@
+#!/bin/bash
+# Auto-provisionamento do ambiente STANDBY (sem SSH/Ansible).
+# Instala Docker, vai buscar a password ao SSM e arranca os containers.
+set -e
+
+dnf install -y docker
+systemctl enable --now docker
+
+# Password da BD a partir do SSM Parameter Store (SecureString), via Instance Profile.
+DB_PW=$(aws ssm get-parameter --name "/${name_prefix}/db_password" \
+  --with-decryption --region ${region} --query 'Parameter.Value' --output text)
+
+DB_URL="postgresql+psycopg2://${db_username}:$${DB_PW}@${rds_endpoint}/${db_name}"
+
+# Imagens públicas no GHCR (repositório público) — não é preciso login.
+docker run -d --name api-service --restart unless-stopped -p 8000:8000 \
+  -e DATABASE_URL="$${DB_URL}" \
+  -e SQS_QUEUE_URL="${queue_url}" \
+  -e AWS_REGION="${region}" \
+  ${image_base}/api-service:${image_tag}
+
+docker run -d --name worker-service --restart unless-stopped \
+  -e DATABASE_URL="$${DB_URL}" \
+  -e SQS_QUEUE_URL="${queue_url}" \
+  -e AWS_REGION="${region}" \
+  ${image_base}/worker-service:${image_tag}

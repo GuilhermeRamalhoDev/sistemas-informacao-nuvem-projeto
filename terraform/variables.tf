@@ -44,3 +44,21 @@ variable "app_port" {
   type        = number
   default     = 8000
 }
+
+variable "standby_region" {
+  description = "Região do ambiente standby (Disaster Recovery)"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "image_base" {
+  description = "Base das imagens GHCR (ex: ghcr.io/owner/repo). Usada pelo standby (user_data)."
+  type        = string
+  default     = ""
+}
+
+variable "image_tag" {
+  description = "Tag das imagens a usar no standby (o pipeline passa o commit SHA)"
+  type        = string
+  default     = "latest"
+}

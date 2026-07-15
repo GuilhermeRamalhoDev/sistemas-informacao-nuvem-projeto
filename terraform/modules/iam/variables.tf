@@ -11,3 +11,8 @@ variable "dlq_arn" {
   description = "ARN da Dead Letter Queue"
   type        = string
 }
+
+variable "ssm_parameter_arn" {
+  description = "ARN do parâmetro SSM com a password da BD"
+  type        = string
+}
