@@ -21,5 +21,12 @@ resource "aws_db_instance" "db" {
   publicly_accessible = false
   skip_final_snapshot = true
 
+  # --- Resiliência de dados (Disaster Recovery) ---
+  # Multi-AZ: a AWS mantém um standby síncrono noutra AZ e faz failover
+  # automático da base de dados (RPO ~0). Permite também criar read replicas
+  # cross-region a partir dos backups automáticos.
+  multi_az                = var.multi_az
+  backup_retention_period = var.backup_retention_period
+
   tags = { Name = "${var.project_name}-rds" }
 }
