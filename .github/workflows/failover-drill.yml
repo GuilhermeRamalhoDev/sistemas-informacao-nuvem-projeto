@@ -1,7 +1,7 @@
 name: Failover Drill
 
-# Simula a falha do ambiente primário e mede o RTO (tempo até o Global
-# Accelerator encaminhar o tráfego para o standby). Disparado manualmente.
+# Simula a falha do ambiente primário e mede o RTO (tempo até o Route 53
+# passar a encaminhar o tráfego para o standby). Disparado manualmente.
 on:
   workflow_dispatch:
     inputs:
