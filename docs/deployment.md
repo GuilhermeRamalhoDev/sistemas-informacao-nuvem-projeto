@@ -52,7 +52,7 @@ curl http://$EC2_IP:8000/registrations
 ## Deploy manual (alternativa)
 
 ```bash
-cd terraform
+cd infrastructure
 terraform init
 terraform apply \
   -var="db_password=<password>" \
@@ -74,7 +74,7 @@ lint (`ruff`) e testes da aplicação, `terraform fmt -check`, `validate` e
 Para não acumular custos após a demonstração:
 
 ```bash
-cd terraform
+cd infrastructure
 terraform destroy \
   -var="db_password=<password>" \
   -var="key_name=cloud-key" \

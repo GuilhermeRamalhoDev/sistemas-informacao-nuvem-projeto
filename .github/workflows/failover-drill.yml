@@ -31,12 +31,12 @@ jobs:
           terraform_wrapper: false
 
       - name: Terraform Init
-        working-directory: terraform
+        working-directory: infrastructure
         run: terraform init -input=false
 
       - name: Ler outputs
         id: tf
-        working-directory: terraform
+        working-directory: infrastructure
         run: |
           echo "zone_id=$(terraform output -raw dns_zone_id)" >> "$GITHUB_OUTPUT"
           echo "fqdn=$(terraform output -raw dns_record_fqdn)" >> "$GITHUB_OUTPUT"

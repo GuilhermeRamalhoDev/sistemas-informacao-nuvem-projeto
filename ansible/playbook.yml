@@ -1,8 +1,11 @@
 ---
 # Configura a EC2 e arranca os containers da aplicação.
 # Variáveis injetadas pelo workflow via --extra-vars:
-#   image_base, image_tag, database_url, sqs_queue_url, aws_region,
-#   app_port, ghcr_user, ghcr_token
+#   image_base, image_tag, sqs_queue_url, aws_region, app_port,
+#   ghcr_user, ghcr_token, ssm_param_name, db_username, rds_endpoint, db_name
+#
+# NOTA: a password da BD NUNCA passa pelo pipeline — é a própria EC2 que a lê
+# do SSM Parameter Store usando o seu IAM Instance Profile (igual ao standby).
 - name: Deploy da aplicação na EC2
   hosts: web
   become: true
@@ -41,6 +44,23 @@
         - worker-service
       failed_when: false
 
+    # A password vem do SSM Parameter Store (SecureString), obtida pela própria
+    # EC2 com as credenciais temporárias do Instance Profile.
+    - name: Obter a password da BD do SSM Parameter Store
+      ansible.builtin.command:
+        cmd: >-
+          aws ssm get-parameter --name {{ ssm_param_name }}
+          --with-decryption --region {{ aws_region }}
+          --query Parameter.Value --output text
+      register: db_password_ssm
+      changed_when: false
+      no_log: true
+
+    - name: Construir o DATABASE_URL
+      ansible.builtin.set_fact:
+        database_url: "postgresql+psycopg2://{{ db_username }}:{{ db_password_ssm.stdout | trim }}@{{ rds_endpoint }}/{{ db_name }}"
+      no_log: true
+
     - name: Arrancar o API Service
       ansible.builtin.command:
         cmd: >-
@@ -50,6 +70,7 @@
           -e SQS_QUEUE_URL={{ sqs_queue_url }}
           -e AWS_REGION={{ aws_region }}
           {{ image_base }}/api-service:{{ image_tag }}
+      no_log: true
 
     - name: Arrancar o Worker Service
       ansible.builtin.command:
@@ -59,3 +80,4 @@
           -e SQS_QUEUE_URL={{ sqs_queue_url }}
           -e AWS_REGION={{ aws_region }}
           {{ image_base }}/worker-service:{{ image_tag }}
+      no_log: true

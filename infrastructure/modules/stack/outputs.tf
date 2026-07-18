@@ -21,3 +21,8 @@ output "rds_endpoint" {
 output "db_name" {
   value = module.database.db_name
 }
+
+output "ssm_param_name" {
+  description = "Nome do parâmetro SSM com a password (lido pela EC2 via Instance Profile)"
+  value       = aws_ssm_parameter.db_password.name
+}

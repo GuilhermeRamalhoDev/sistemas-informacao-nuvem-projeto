@@ -35,7 +35,7 @@ terraform apply -var="github_repo=OWNER/REPO"
 
 No fim, anota os outputs:
 
-- `state_bucket` e `lock_table` → já correspondem aos valores em `terraform/backend.tf`
+- `state_bucket` e `lock_table` → já correspondem aos valores em `infrastructure/backend.tf`
 - `github_actions_role_arn` → guarda no GitHub Secret `AWS_ROLE_ARN`
 
 ## 3. Configurar GitHub (Secrets e Variables)

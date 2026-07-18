@@ -19,6 +19,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Gate de aprovação: o apply só corre depois de aprovação manual no
+    # GitHub Environment "production" (required reviewers).
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -60,11 +63,11 @@ jobs:
           terraform_wrapper: false
 
       - name: Terraform Init
-        working-directory: terraform
+        working-directory: infrastructure
         run: terraform init -input=false
 
       - name: Terraform Apply
-        working-directory: terraform
+        working-directory: infrastructure
         env:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
           TF_VAR_key_name: ${{ vars.EC2_KEY_NAME }}
@@ -76,13 +79,16 @@ jobs:
 
       - name: Capturar outputs do Terraform
         id: tf
-        working-directory: terraform
+        working-directory: infrastructure
         run: |
           echo "ec2_ip=$(terraform output -raw ec2_public_ip)" >> "$GITHUB_OUTPUT"
           echo "queue_url=$(terraform output -raw queue_url)" >> "$GITHUB_OUTPUT"
           echo "web_sg_id=$(terraform output -raw web_sg_id)" >> "$GITHUB_OUTPUT"
-          # database_url é sensível: passa por env, não por output de step.
-          echo "DATABASE_URL=$(terraform output -raw rds_database_url)" >> "$GITHUB_ENV"
+          # Dados NÃO sensíveis: a password é lida do SSM pela própria EC2.
+          echo "ssm_param=$(terraform output -raw primary_ssm_param_name)" >> "$GITHUB_OUTPUT"
+          echo "rds_endpoint=$(terraform output -raw primary_rds_endpoint)" >> "$GITHUB_OUTPUT"
+          echo "db_name=$(terraform output -raw primary_db_name)" >> "$GITHUB_OUTPUT"
+          echo "db_username=$(terraform output -raw db_username)" >> "$GITHUB_OUTPUT"
 
       # Abre o SSH APENAS para o IP deste runner, durante o deploy.
       - name: Abrir SSH temporário para o runner
@@ -122,12 +128,15 @@ jobs:
           ansible-playbook -i inventory.ini playbook.yml \
             -e "image_base=$IMAGE_BASE" \
             -e "image_tag=${{ github.sha }}" \
-            -e "database_url=$DATABASE_URL" \
             -e "sqs_queue_url=${{ steps.tf.outputs.queue_url }}" \
             -e "aws_region=us-east-1" \
             -e "app_port=8000" \
             -e "ghcr_user=${{ github.actor }}" \
-            -e "ghcr_token=${{ secrets.GITHUB_TOKEN }}"
+            -e "ghcr_token=${{ secrets.GITHUB_TOKEN }}" \
+            -e "ssm_param_name=${{ steps.tf.outputs.ssm_param }}" \
+            -e "db_username=${{ steps.tf.outputs.db_username }}" \
+            -e "rds_endpoint=${{ steps.tf.outputs.rds_endpoint }}" \
+            -e "db_name=${{ steps.tf.outputs.db_name }}"
 
       # Fecha sempre o SSH do runner, mesmo que um passo anterior falhe.
       - name: Fechar SSH temporário do runner

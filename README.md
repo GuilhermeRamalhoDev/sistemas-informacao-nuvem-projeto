@@ -27,7 +27,7 @@ FastAPI / Python · Ansible · GitHub Actions (OIDC) · PostgreSQL
 ```
 .
 ├── app/              # Código da aplicação (api-service, worker-service) + dev local
-├── terraform/        # Infraestrutura AWS em módulos
+├── infrastructure/   # Infraestrutura AWS em módulos (Terraform)
 ├── bootstrap/        # Backend remoto + OIDC (corre uma vez)
 ├── ansible/          # Configuração da EC2 e arranque dos containers
 ├── .github/workflows # CI (pr-check) e CD (deploy)

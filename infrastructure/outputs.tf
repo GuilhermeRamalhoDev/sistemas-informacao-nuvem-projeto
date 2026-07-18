@@ -35,10 +35,26 @@ output "queue_url" {
   value       = module.primary.queue_url
 }
 
-output "rds_database_url" {
-  description = "DATABASE_URL do primário (sensível: contém password)"
-  value       = "postgresql+psycopg2://${var.db_username}:${var.db_password}@${module.primary.rds_endpoint}/${module.primary.db_name}"
-  sensitive   = true
+# A password NÃO é exposta em outputs: a EC2 primária vai buscá-la ao SSM
+# (tal como a standby). Aqui expomos apenas os dados não sensíveis.
+output "primary_rds_endpoint" {
+  description = "Endpoint do RDS primário"
+  value       = module.primary.rds_endpoint
+}
+
+output "primary_db_name" {
+  description = "Nome da base de dados do primário"
+  value       = module.primary.db_name
+}
+
+output "primary_ssm_param_name" {
+  description = "Parâmetro SSM com a password do primário"
+  value       = module.primary.ssm_param_name
+}
+
+output "db_username" {
+  description = "Utilizador da base de dados"
+  value       = var.db_username
 }
 
 # --- Standby (us-west-2) — auto-provisionado ---

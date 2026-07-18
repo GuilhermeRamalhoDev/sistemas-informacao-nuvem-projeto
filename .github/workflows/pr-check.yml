@@ -39,7 +39,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
 
       - name: Terraform fmt (check)
-        working-directory: terraform
+        working-directory: infrastructure
         run: terraform fmt -check -recursive
 
       - name: Configure AWS credentials (OIDC)
@@ -49,15 +49,15 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
 
       - name: Terraform Init
-        working-directory: terraform
+        working-directory: infrastructure
         run: terraform init -input=false
 
       - name: Terraform Validate
-        working-directory: terraform
+        working-directory: infrastructure
         run: terraform validate
 
       - name: Terraform Plan
-        working-directory: terraform
+        working-directory: infrastructure
         env:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
           TF_VAR_key_name: ${{ vars.EC2_KEY_NAME }}

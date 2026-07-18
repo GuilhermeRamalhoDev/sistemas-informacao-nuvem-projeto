@@ -61,6 +61,40 @@ snapshot para a região standby. Em produção (conta paga), ativar-se-ia
 - **RPO:** limitado ao intervalo entre snapshots.
 - **Recuperação:** restauro do último snapshot na região standby (documentado).
 
+## Pipeline: um só workflow provisiona os dois ambientes
+
+- `terraform plan` corre em **cada Pull Request**, cobrindo primário **e** standby
+  (ambos estão na mesma configuração).
+- `terraform apply` corre em merge para `main`, **protegido por aprovação
+  manual** no GitHub Environment `production` (*required reviewers*).
+- Autenticação por **OIDC**, sem access keys de longa duração.
+
+## Gestão de secrets (nas duas regiões)
+
+A password da BD é guardada no **SSM Parameter Store** como `SecureString`, com um
+parâmetro **em cada região** (`/<prefixo>/db_password`). Em ambos os ambientes é a
+própria EC2 que a lê, com as credenciais temporárias do seu IAM Instance Profile:
+
+- **Primário:** o Ansible corre `aws ssm get-parameter --with-decryption` na EC2.
+- **Standby:** o `user_data` faz o mesmo no arranque.
+
+A password **nunca** passa pelo pipeline nem aparece em outputs do Terraform.
+
+## Custo: porquê warm standby (tradeoff)
+
+| Padrão | Custo | RTO |
+|--------|-------|-----|
+| Backup & restore | mínimo | horas |
+| **Pilot light** | baixo (BD replicada, compute desligado) | dezenas de minutos |
+| **Warm standby** ← escolhido | médio (tudo a correr, dimensão mínima) | **segundos** |
+| Multi-site ativo/ativo | alto (capacidade dupla) | ~zero |
+
+Escolhi **warm standby** com recursos mínimos (`t3.micro`, RDS single-AZ): o
+standby está sempre a correr e pronto a receber tráfego, o que dá um RTO de
+segundos, mas com custo reduzido por ser dimensionado ao mínimo. Um *pilot light*
+seria mais barato, mas exigiria arrancar o compute durante o incidente,
+aumentando muito o RTO.
+
 ## Tudo codificado (sem cliques na consola)
 
 - Infraestrutura dos dois ambientes: `modules/stack` (parametrizado).
