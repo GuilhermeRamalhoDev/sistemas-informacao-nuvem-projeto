@@ -40,6 +40,36 @@ Nenhuma informação sensível está no código. São usados GitHub Secrets:
 A password do RDS é passada como variável Terraform `sensitive`, nunca aparecendo
 em logs ou no código.
 
+### SSM Parameter Store (onde a aplicação vai buscar a password)
+
+O GitHub Secret é apenas o **ponto de origem**. O Terraform guarda a password no
+**AWS SSM Parameter Store** como `SecureString`, com um parâmetro **em cada
+região** (`/<prefixo>/db_password`).
+
+São as próprias instâncias EC2 que a leem, usando as credenciais temporárias do
+seu **IAM Instance Profile**:
+
+- **Primário:** o Ansible corre `aws ssm get-parameter --with-decryption` na EC2.
+- **Standby:** o `user_data` faz o mesmo no arranque (sem SSH).
+
+A política IAM permite **apenas** `ssm:GetParameter` e **apenas** sobre esse
+parâmetro (menor privilégio):
+
+```hcl
+actions   = ["ssm:GetParameter"]
+resources = [var.ssm_parameter_arn]   # só este parâmetro
+```
+
+Consequência importante: a password **não circula no pipeline** nem é exposta em
+outputs do Terraform — os workflows só passam dados não sensíveis (endpoint da
+BD, nome do parâmetro, utilizador).
+
+### Aprovação manual antes de alterar produção
+
+O job de deploy corre no GitHub Environment `production`, protegido por
+**required reviewers**: o `terraform apply` fica em espera até ser aprovado
+manualmente, evitando alterações não supervisionadas à infraestrutura.
+
 ## Segurança de rede
 
 ### Security Group da EC2 (`web-sg`)

@@ -62,16 +62,35 @@ Amazon RDS PostgreSQL. Duas tabelas: `events` (capacidade) e `registrations`
 (estado da inscrição). O esquema é criado automaticamente no arranque dos
 serviços (`create_all`).
 
+## Alta disponibilidade: dois ambientes (Disaster Recovery)
+
+A arquitetura descrita acima é replicada em **duas regiões AWS**, a partir do
+**mesmo módulo Terraform** (`modules/stack`), parametrizado por região:
+
+| Ambiente | Região | Configuração da app |
+|----------|--------|---------------------|
+| **Primário** | `us-east-1` | Configurado por Ansible (via SSH do pipeline) |
+| **Standby** | `us-west-2` | Auto-provisionado por `user_data` (sem SSH) |
+
+À frente dos dois está o **Route 53** com *failover routing* e um health check ao
+`/health` do primário: se este falhar, o DNS passa automaticamente a responder
+com o IP do standby, sem qualquer intervenção manual.
+
+Detalhe completo, objetivos de RTO/RPO e runbook do failover em [`dr.md`](dr.md).
+
 ## Principais decisões técnicas
 
 | Decisão | Justificação |
 |---------|--------------|
-| Terraform em módulos | Reutilização e separação lógica (networking, compute, database, queue, iam) |
+| Terraform em módulos | Reutilização e separação lógica (networking, compute, database, queue, iam, dns) |
+| Módulo `stack` instanciado 2x | O standby é uma **cópia parametrizada** do primário — sem código duplicado |
 | Remote state (S3 + DynamoDB) | Trabalho colaborativo e locking contra escritas simultâneas |
 | OIDC no GitHub Actions | Elimina access keys estáticas na pipeline |
-| IAM Instance Profile na EC2 | A aplicação acede à SQS sem credenciais hardcoded |
+| IAM Instance Profile na EC2 | A aplicação acede à SQS e ao SSM sem credenciais hardcoded |
+| Secrets no SSM Parameter Store | A password é lida pela EC2, não circula no pipeline |
 | SQS para comunicação | Desacoplamento e resiliência entre serviços |
 | Tags de imagem por commit SHA | Deploys imutáveis e rastreáveis |
+| Route 53 para failover | Failover automático por health checks, sem depender de serviços indisponíveis no Free Tier |
 
 ## Paridade local/produção
 
