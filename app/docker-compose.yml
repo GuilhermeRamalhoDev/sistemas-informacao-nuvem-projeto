@@ -34,6 +34,7 @@ services:
 
   api-service:
     build: ./api-service
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -52,6 +53,9 @@ services:
 
   worker-service:
     build: ./worker-service
+    # Reinicia se arrancar antes de a fila SQS estar criada (o LocalStack demora
+    # uns segundos a correr o script de init). Em poucos segundos estabiliza.
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
